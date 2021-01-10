@@ -9,10 +9,7 @@ use std::rc::*;
 
 mod image;
 
-pub fn new_app_drawingarea() -> gtk::Frame {
-    let frame_builder = gtk::FrameBuilder::new();
-    let frame = frame_builder.build();
-
+pub fn new_app_drawingarea() -> gtk::DrawingArea {
     let builder = gtk::DrawingAreaBuilder::new().width_request(300);
     let drawing_area = builder.build();
 
@@ -41,12 +38,6 @@ pub fn new_app_drawingarea() -> gtk::Frame {
         );
         Inhibit(false)
     });
-
-    // note:
-    // drawing_area は worker_to_gui_rx.attach に所有権を奪われる。
-    // なので、frame に drawing_area をセットして、frameを返すことにしている。
-    // 何か間違っているかもしれない
-    frame.add(&drawing_area);
 
     //
 
@@ -104,16 +95,19 @@ pub fn new_app_drawingarea() -> gtk::Frame {
 
     let _ = to_worker_tx.send(RefCell::new(initial_image));
 
-    worker_to_gui_rx.attach(None, move |image| {
-        // Swap the newly received image with the old stored one and send the old one back to
-        // the worker thread
-        let next_image = image;
-        buffer_image.swap(&next_image);
-        let _ = to_worker_tx.send(next_image);
+    worker_to_gui_rx.attach(
+        None,
+        glib::clone!(@weak drawing_area => @default-return Continue(false), move |image| {
+            // Swap the newly received image with the old stored one and send the old one back to
+            // the worker thread
+            let next_image = image;
+            buffer_image.swap(&next_image);
+            let _ = to_worker_tx.send(next_image);
 
-        drawing_area.queue_draw_area(0, 0, 400, 400); // TODO:
+            drawing_area.queue_draw_area(0, 0, 400, 400); // TODO:
 
-        Continue(true)
-    });
-    frame
+            Continue(true)
+        }),
+    );
+    drawing_area
 }
