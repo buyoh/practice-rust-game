@@ -51,8 +51,12 @@ pub fn new_app_drawingarea() -> gtk::DrawingArea {
     //
     // This is the channel for sending results from the worker thread to the main thread
     // For every received image, queue the corresponding part of the DrawingArea for redrawing
-    let (worker_to_gui_tx, worker_to_gui_rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+    // gtkのメインスレッドで実行したい場合に使えるchannel
+    // 受け取った時に実行するには、worker_to_gui_rx.attachを実装する
+    let (worker_to_gui_tx, worker_to_gui_rx) =
+        glib::MainContext::channel::<RefCell<image::Image>>(glib::PRIORITY_DEFAULT);
 
+    // from main thread to worker thread
     let (to_worker_tx, to_worker_rx) = std::sync::mpsc::channel::<RefCell<image::Image>>();
 
     // animation thread
@@ -80,20 +84,20 @@ pub fn new_app_drawingarea() -> gtk::DrawingArea {
     });
 
     let buffer_image = Rc::new(RefCell::new(initial_image.clone()));
+    let _ = to_worker_tx.send(RefCell::new(initial_image));
 
     drawing_area.connect_draw(
       glib::clone!(@weak buffer_image => @default-return Inhibit(false), move|_ /* widget */, context: &cairo::Context| {
-          buffer_image.borrow_mut().with_surface(|surface| {
+            // 描画が必要になった時に呼び出される
+            // buffer_image が死んだ時は呼び出されず Inhibit(false) を返す
+            buffer_image.borrow_mut().with_surface(|surface| {
                 context.set_source_surface(surface, 0.0, 0.0);
                 context.paint();
                 context.set_source_rgb(0.0, 0.0, 0.0);
             });
-
             Inhibit(false)
         }),
     );
-
-    let _ = to_worker_tx.send(RefCell::new(initial_image));
 
     worker_to_gui_rx.attach(
         None,
@@ -104,7 +108,8 @@ pub fn new_app_drawingarea() -> gtk::DrawingArea {
             buffer_image.swap(&next_image);
             let _ = to_worker_tx.send(next_image);
 
-            drawing_area.queue_draw_area(0, 0, 400, 400); // TODO:
+            let img = buffer_image.borrow();
+            drawing_area.queue_draw_area(0, 0, img.width(), img.height());
 
             Continue(true)
         }),

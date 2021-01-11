@@ -21,6 +21,14 @@ impl Image {
         }
     }
 
+    pub fn width(&self) -> i32 {
+        self.width
+    }
+
+    pub fn height(&self) -> i32 {
+        self.height
+    }
+
     // Calls the given closure with a temporary Cairo image surface. After the closure has returned
     // there must be no further references to the surface.
     pub fn with_surface<F: FnOnce(&cairo::ImageSurface)>(&mut self, func: F) {
