@@ -7,9 +7,19 @@ use gtk::prelude::*;
 use std::cell::*;
 use std::rc::*;
 
+use crate::game; // note: いまいち？
+
 mod image;
 
-pub fn new_app_drawingarea() -> gtk::DrawingArea {
+fn paint_game(context: &cairo::Context, game: &game::Game, cnt: i32) {
+    context.set_source_rgb(1.0, 1.0, cnt as f64 / 100.0);
+    context.paint();
+    context.set_source_rgb(0.0, 0.0, 0.0);
+    context.rectangle(game.player().x, game.player().y, 20.0, 20.0);
+    context.stroke();
+}
+
+pub fn new_app_drawingarea(game: std::sync::Arc<std::sync::Mutex<game::Game>>) -> gtk::DrawingArea {
     let builder = gtk::DrawingAreaBuilder::new().width_request(300);
     let drawing_area = builder.build();
 
@@ -21,6 +31,7 @@ pub fn new_app_drawingarea() -> gtk::DrawingArea {
         .add_events(gdk::EventMask::BUTTON_PRESS_MASK | gdk::EventMask::BUTTON_RELEASE_MASK);
 
     drawing_area.connect_button_press_event(|_, event| {
+        // TODO: handle mouse event
         println!(
             "btnpress: {} ({}, {})",
             event.get_button(),
@@ -30,6 +41,7 @@ pub fn new_app_drawingarea() -> gtk::DrawingArea {
         Inhibit(false)
     });
     drawing_area.connect_button_release_event(|_, event| {
+        // TODO: handle mouse event
         println!(
             "btnrelease: {} ({}, {})",
             event.get_button(),
@@ -69,11 +81,7 @@ pub fn new_app_drawingarea() -> gtk::DrawingArea {
             // Draw an arc with a weirdly calculated radius
             image.borrow_mut().with_surface(|surface| {
                 let context = cairo::Context::new(surface);
-                context.set_source_rgb(1.0, 1.0, 1.0);
-                context.paint();
-                context.set_source_rgb(0.0, 0.0, n as f64 / 100.0);
-                context.rectangle(50.0, 50.0, 100.0, 100.0);
-                context.stroke();
+                paint_game(&context, &game.lock().unwrap(), n);
                 surface.flush();
             });
 

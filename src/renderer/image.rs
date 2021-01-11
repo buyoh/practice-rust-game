@@ -22,11 +22,11 @@ impl Image {
     }
 
     pub fn width(&self) -> i32 {
-        self.width
+        self.width.clone()
     }
 
     pub fn height(&self) -> i32 {
-        self.height
+        self.height.clone()
     }
 
     // Calls the given closure with a temporary Cairo image surface. After the closure has returned
