@@ -2,16 +2,17 @@ extern crate cairo;
 extern crate gio;
 extern crate gtk;
 
+use game::GameDisplayInfo;
 use gio::prelude::*;
 use gtk::prelude::*;
-use std::cell::*;
 use std::rc::*;
+use std::{cell::*, sync::mpsc::Receiver};
 
 use crate::game; // note: いまいち？
 
 mod image;
 
-fn paint_game(context: &cairo::Context, game: &game::GameDisplayInfo, cnt: i32) {
+fn paint_game(context: &cairo::Context, game: std::cell::Ref<'_, game::GameDisplayInfo>, cnt: i32) {
     context.set_source_rgb(1.0, 1.0, cnt as f64 / 100.0);
     context.paint();
     context.set_source_rgb(0.0, 0.0, 0.0);
@@ -19,9 +20,10 @@ fn paint_game(context: &cairo::Context, game: &game::GameDisplayInfo, cnt: i32) 
     context.stroke();
 }
 
-pub fn new_app_drawingarea<'a, F: FnOnce() -> Ref<'a, game::GameDisplayInfo> + Send + 'static>(
-    game_getter: F,
-) -> gtk::DrawingArea {
+pub fn new_app_drawingarea(game_display_rx: Receiver<GameDisplayInfo>) -> gtk::DrawingArea {
+    // pub fn new_app_drawingarea<'a, F: FnOnce() -> game::GameDisplayInfo + Send + 'static>(
+    //     game_getter: F,
+    // ) -> gtk::DrawingArea {
     let builder = gtk::DrawingAreaBuilder::new().width_request(300);
     let drawing_area = builder.build();
 
@@ -77,13 +79,17 @@ pub fn new_app_drawingarea<'a, F: FnOnce() -> Ref<'a, game::GameDisplayInfo> + S
     // std::thread::spawn(glib::clone!(move || {
     std::thread::spawn(move || {
         let mut n = 0;
+        let game_display = Rc::new(RefCell::new(GameDisplayInfo::default()));
         for image in to_worker_rx.iter() {
             n = (n + 1) % 100;
+            for new_game_display in game_display_rx.try_iter() {
+                game_display.replace(new_game_display);
+            }
 
             // Draw an arc with a weirdly calculated radius
             image.borrow_mut().with_surface(|surface| {
                 let context = cairo::Context::new(surface);
-                paint_game(&context, &game_getter(), n);
+                paint_game(&context, game_display.borrow(), n);
                 surface.flush();
             });
 
