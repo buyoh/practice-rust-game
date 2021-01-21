@@ -5,6 +5,9 @@ extern crate gtk;
 mod game;
 mod renderer;
 
+use std::{cell::RefCell, rc::Rc};
+
+use game::GameDisplayInfo;
 use gio::prelude::*;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow};
@@ -19,6 +22,10 @@ fn main() {
     // let game = std::sync::Arc::new(game::Game::new());
     let game = std::sync::Arc::new(std::sync::Mutex::new(game::Game::new()));
     let game_gtk = game.clone();
+
+    // for transfering display infomations
+    let (game_display_tx, game_display_rx) = std::sync::mpsc::channel::<game::GameDisplayInfo>();
+    // std::sync::mpsc::channel::<RefCell<game::GameDisplayInfo>>();
 
     application.connect_activate(move |app| {
         let window = ApplicationWindow::new(app);
@@ -48,7 +55,15 @@ fn main() {
             Inhibit(false)
         });
 
-        let drawing_area = renderer::new_app_drawingarea(game_gtk.clone());
+        let drawing_area = renderer::new_app_drawingarea(|| {
+            let game_display = Rc::new(RefCell::new(GameDisplayInfo::default()));
+            || {
+                for new_game_display in game_display_rx.try_iter() {
+                    game_display.replace(new_game_display);
+                }
+                game_display.borrow()
+            }
+        }());
         drawing_area.emit_grab_focus();
         window.add(&drawing_area);
         window.show_all();
@@ -61,6 +76,8 @@ fn main() {
             {
                 let mut g = game.lock().unwrap();
                 g.tick();
+                // game_display_tx.send(RefCell::new(g.get_display_info()));
+                game_display_tx.send(g.get_display_info());
             }
             // タイマーが使えたら良い
             std::thread::sleep(std::time::Duration::from_millis(15));

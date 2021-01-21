@@ -11,15 +11,17 @@ use crate::game; // note: いまいち？
 
 mod image;
 
-fn paint_game(context: &cairo::Context, game: &game::Game, cnt: i32) {
+fn paint_game(context: &cairo::Context, game: &game::GameDisplayInfo, cnt: i32) {
     context.set_source_rgb(1.0, 1.0, cnt as f64 / 100.0);
     context.paint();
     context.set_source_rgb(0.0, 0.0, 0.0);
-    context.rectangle(game.player().x, game.player().y, 20.0, 20.0);
+    context.rectangle(game.player.x, game.player.y, 20.0, 20.0);
     context.stroke();
 }
 
-pub fn new_app_drawingarea(game: std::sync::Arc<std::sync::Mutex<game::Game>>) -> gtk::DrawingArea {
+pub fn new_app_drawingarea<'a, F: FnOnce() -> Ref<'a, game::GameDisplayInfo> + Send + 'static>(
+    game_getter: F,
+) -> gtk::DrawingArea {
     let builder = gtk::DrawingAreaBuilder::new().width_request(300);
     let drawing_area = builder.build();
 
@@ -81,7 +83,7 @@ pub fn new_app_drawingarea(game: std::sync::Arc<std::sync::Mutex<game::Game>>) -
             // Draw an arc with a weirdly calculated radius
             image.borrow_mut().with_surface(|surface| {
                 let context = cairo::Context::new(surface);
-                paint_game(&context, &game.lock().unwrap(), n);
+                paint_game(&context, &game_getter(), n);
                 surface.flush();
             });
 
