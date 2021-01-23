@@ -4,6 +4,7 @@ extern crate gtk;
 
 mod game;
 mod renderer;
+mod screen;
 
 use gio::prelude::*;
 use gtk::prelude::*;
@@ -50,7 +51,9 @@ fn main() {
             Inhibit(false)
         });
 
-        let drawing_area = renderer::new_app_drawingarea(game_display_rx);
+        let renderer = renderer::Renderer::new(game_display_rx);
+
+        let drawing_area = screen::new_app_drawingarea(renderer);
         drawing_area.emit_grab_focus();
         window.add(&drawing_area);
         window.show_all();
@@ -63,7 +66,7 @@ fn main() {
                 {
                     let mut g = game.lock().unwrap();
                     g.tick();
-                    game_display_tx.send(g.get_display_info());
+                    game_display_tx.send(g.get_display_info()).ok();
                 }
                 // タイマーが使えたら良い
                 std::thread::sleep(std::time::Duration::from_millis(15));

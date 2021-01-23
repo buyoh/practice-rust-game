@@ -1,134 +1,46 @@
-extern crate cairo;
-extern crate gio;
-extern crate gtk;
+use std::sync::mpsc::Receiver;
 
-use game::GameDisplayInfo;
-use gio::prelude::*;
-use gtk::prelude::*;
+use crate::game::GameDisplayInfo;
+
+use std::cell::*;
 use std::rc::*;
-use std::{cell::*, sync::mpsc::Receiver};
 
-use crate::game; // note: いまいち？
-
-mod image;
-
-fn paint_game(context: &cairo::Context, game: std::cell::Ref<'_, game::GameDisplayInfo>, cnt: i32) {
-    context.set_source_rgb(1.0, 1.0, cnt as f64 / 100.0);
-    context.paint();
-    context.set_source_rgb(0.0, 0.0, 0.0);
-    context.rectangle(game.player.x, game.player.y, 20.0, 20.0);
-    context.stroke();
+pub struct Renderer {
+    game_display_rx: Receiver<GameDisplayInfo>,
 }
 
-pub fn new_app_drawingarea(game_display_rx: Receiver<GameDisplayInfo>) -> gtk::DrawingArea {
-    // pub fn new_app_drawingarea<'a, F: FnOnce() -> game::GameDisplayInfo + Send + 'static>(
-    //     game_getter: F,
-    // ) -> gtk::DrawingArea {
-    let builder = gtk::DrawingAreaBuilder::new().width_request(300);
-    let drawing_area = builder.build();
+pub(crate) struct RendererHolder {
+    renderer: Renderer,
+    game_display: Rc<RefCell<GameDisplayInfo>>,
+}
 
-    // note:
-    // キーイベントを取り出せない
-    // textarea系なら出来るのかな？windowから取れるので、今はそうしておく
-    // マウスは取り出せる
-    drawing_area
-        .add_events(gdk::EventMask::BUTTON_PRESS_MASK | gdk::EventMask::BUTTON_RELEASE_MASK);
-
-    drawing_area.connect_button_press_event(|_, event| {
-        // TODO: handle mouse event
-        println!(
-            "btnpress: {} ({}, {})",
-            event.get_button(),
-            event.get_position().0,
-            event.get_position().1
-        );
-        Inhibit(false)
-    });
-    drawing_area.connect_button_release_event(|_, event| {
-        // TODO: handle mouse event
-        println!(
-            "btnrelease: {} ({}, {})",
-            event.get_button(),
-            event.get_position().0,
-            event.get_position().1
-        );
-        Inhibit(false)
-    });
-
-    //
-
-    let mut initial_image = image::Image::new(400, 400);
-
-    initial_image.with_surface(|surface| {
-        let cr = cairo::Context::new(surface);
-        cr.set_source_rgb(0., 1., 0.);
-        cr.paint();
-    });
-    //
-    // This is the channel for sending results from the worker thread to the main thread
-    // For every received image, queue the corresponding part of the DrawingArea for redrawing
-    // gtkのメインスレッドで実行したい場合に使えるchannel
-    // 受け取った時に実行するには、worker_to_gui_rx.attachを実装する
-    let (worker_to_gui_tx, worker_to_gui_rx) =
-        glib::MainContext::channel::<RefCell<image::Image>>(glib::PRIORITY_DEFAULT);
-
-    // from main thread to worker thread
-    let (to_worker_tx, to_worker_rx) = std::sync::mpsc::channel::<RefCell<image::Image>>();
-
-    // animation thread
-    // std::thread::spawn(glib::clone!(move || {
-    std::thread::spawn(move || {
-        let mut n = 0;
-        let game_display = Rc::new(RefCell::new(GameDisplayInfo::default()));
-        for image in to_worker_rx.iter() {
-            n = (n + 1) % 100;
-            for new_game_display in game_display_rx.try_iter() {
-                game_display.replace(new_game_display);
-            }
-
-            // Draw an arc with a weirdly calculated radius
-            image.borrow_mut().with_surface(|surface| {
-                let context = cairo::Context::new(surface);
-                paint_game(&context, game_display.borrow(), n);
-                surface.flush();
-            });
-
-            // Send the finished image back to the GUI thread
-            let _ = worker_to_gui_tx.send(image);
-            std::thread::sleep(std::time::Duration::from_millis(15));
+impl Renderer {
+    pub fn new(game_display_rx: Receiver<GameDisplayInfo>) -> Renderer {
+        Renderer {
+            game_display_rx: game_display_rx,
         }
-    });
+    }
+}
 
-    let buffer_image = Rc::new(RefCell::new(initial_image.clone()));
-    let _ = to_worker_tx.send(RefCell::new(initial_image));
+impl RendererHolder {
+    pub fn new(renderer: Renderer) -> RendererHolder {
+        RendererHolder {
+            renderer: renderer,
+            game_display: Rc::new(RefCell::new(GameDisplayInfo::default())),
+        }
+    }
 
-    drawing_area.connect_draw(
-      glib::clone!(@weak buffer_image => @default-return Inhibit(false), move|_ /* widget */, context: &cairo::Context| {
-            // 描画が必要になった時に呼び出される
-            // buffer_image が死んだ時は呼び出されず Inhibit(false) を返す
-            buffer_image.borrow_mut().with_surface(|surface| {
-                context.set_source_surface(surface, 0.0, 0.0);
-                context.paint();
-                context.set_source_rgb(0.0, 0.0, 0.0);
-            });
-            Inhibit(false)
-        }),
-    );
-
-    worker_to_gui_rx.attach(
-        None,
-        glib::clone!(@weak drawing_area => @default-return Continue(false), move |image| {
-            // Swap the newly received image with the old stored one and send the old one back to
-            // the worker thread
-            let next_image = image;
-            buffer_image.swap(&next_image);
-            let _ = to_worker_tx.send(next_image);
-
-            let img = buffer_image.borrow();
-            drawing_area.queue_draw_area(0, 0, img.width(), img.height());
-
-            Continue(true)
-        }),
-    );
-    drawing_area
+    pub fn paint_game(&mut self, context: &cairo::Context, cnt: i32) {
+        // TODO: replace cnt to time
+        // update display here
+        for new_game_display in self.renderer.game_display_rx.try_iter() {
+            self.game_display.replace(new_game_display);
+        }
+        let game = self.game_display.borrow();
+        context.set_source_rgb(1.0, 1.0, cnt as f64 / 100.0);
+        context.paint();
+        context.set_source_rgb(0.0, 0.0, 0.0);
+        context.rectangle(game.player.x, game.player.y, 20.0, 20.0);
+        context.stroke();
+    }
 }
