@@ -1,8 +1,12 @@
 mod basic;
 mod machine;
+mod course;
 
+#[derive(Clone)]
 pub struct GameDisplayInfo {
     pub player: basic::Entity,
+    pub camera: basic::Entity,
+    pub course: course::Course,
 }
 
 impl GameDisplayInfo {
@@ -13,12 +17,18 @@ impl GameDisplayInfo {
                 y: 0.0,
                 angle: 0.0,
             },
+            camera: basic::Entity {
+                x: 0.0,
+                y: 0.0,
+                angle: 0.0,
+            },
+            course: course::Course::default(),
         }
     }
 }
 
 pub struct Game {
-    // displayInfo: Rc<RefCell<GameDisplayInfo>>,
+    display_info: GameDisplayInfo,
     player: machine::Machine,
     key_up: bool,
     key_down: bool,
@@ -35,6 +45,7 @@ impl Game {
             // displayInfo: Rc::<RefCell<GameDisplayInfo>>::new(RefCell::<GameDisplayInfo>::new(
             //     GameDisplayInfo::new(),
             // )),
+            display_info: GameDisplayInfo::default(),
             player: player,
             key_up: false,
             key_down: false,
@@ -43,9 +54,7 @@ impl Game {
         }
     }
     pub fn get_display_info(&self) -> GameDisplayInfo {
-        GameDisplayInfo {
-            player: self.player.entity.clone(),
-        }
+        self.display_info.clone()
     }
     pub fn tick(&mut self) {
         self.player.accsel =
@@ -53,6 +62,7 @@ impl Game {
         self.player.steer =
             (if self.key_right { 1.0 } else { 0.0 }) + (if self.key_left { -1.0 } else { 0.0 });
         self.player.tick();
+        self.display_info.player = self.player.entity.clone();
     }
     pub fn handle_key_press_event(&mut self, key: gdk::keys::Key) {
         // match key {
