@@ -11,7 +11,7 @@ use crate::renderer::{Renderer, RendererHolder}; // note: いまいち？
 
 mod image;
 
-pub fn new_app_drawingarea(renderer: Renderer) -> gtk::DrawingArea {
+pub fn new_app_drawingarea(width: i32, height: i32, renderer: Renderer) -> gtk::DrawingArea {
     // pub fn new_app_drawingarea<'a, F: FnOnce() -> game::GameDisplayInfo + Send + 'static>(
     //     game_getter: F,
     // ) -> gtk::DrawingArea {
@@ -48,7 +48,7 @@ pub fn new_app_drawingarea(renderer: Renderer) -> gtk::DrawingArea {
 
     //
 
-    let mut initial_image = image::Image::new(400, 400);
+    let mut initial_image = image::Image::new(width, height);
 
     initial_image.with_surface(|surface| {
         let cr = cairo::Context::new(surface);

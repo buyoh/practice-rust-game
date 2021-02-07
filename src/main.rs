@@ -12,6 +12,9 @@ use gtk::{Application, ApplicationWindow};
 
 //
 
+const DISPLAY_WIDTH: i32 = 400;
+const DISPLAY_HEIGHT: i32 = 400;
+
 fn main() {
     let application =
         Application::new(Some("com.github.gtk-rs.examples.basic"), Default::default())
@@ -20,7 +23,7 @@ fn main() {
     application.connect_activate(move |app| {
         let window = ApplicationWindow::new(app);
         window.set_title("First GTK+ Program");
-        window.set_default_size(400, 400);
+        window.set_default_size(DISPLAY_WIDTH, DISPLAY_HEIGHT);
         window.set_resizable(false);
 
         let game = std::sync::Arc::new(std::sync::Mutex::new(game::Game::new()));
@@ -51,9 +54,9 @@ fn main() {
             Inhibit(false)
         });
 
-        let renderer = renderer::Renderer::new(game_display_rx);
+        let renderer = renderer::Renderer::new(DISPLAY_WIDTH, DISPLAY_HEIGHT, game_display_rx);
 
-        let drawing_area = screen::new_app_drawingarea(renderer);
+        let drawing_area = screen::new_app_drawingarea(DISPLAY_WIDTH, DISPLAY_HEIGHT, renderer);
         drawing_area.emit_grab_focus();
         window.add(&drawing_area);
         window.show_all();

@@ -6,6 +6,8 @@ use std::cell::*;
 use std::rc::*;
 
 pub struct Renderer {
+    width: i32,
+    height: i32,
     game_display_rx: Receiver<GameDisplayInfo>,
 }
 
@@ -15,8 +17,10 @@ pub(crate) struct RendererHolder {
 }
 
 impl Renderer {
-    pub fn new(game_display_rx: Receiver<GameDisplayInfo>) -> Renderer {
+    pub fn new(width: i32, height: i32, game_display_rx: Receiver<GameDisplayInfo>) -> Renderer {
         Renderer {
+            width: width,
+            height: height,
             game_display_rx: game_display_rx,
         }
     }
@@ -43,13 +47,12 @@ impl RendererHolder {
         self.paint_course(context, &game);
     }
 
-    fn paint_player(& self, context: &cairo::Context, game: &GameDisplayInfo) {
+    fn paint_player(&self, context: &cairo::Context, game: &GameDisplayInfo) {
         context.set_source_rgb(0.0, 0.0, 0.0);
         context.rectangle(game.player.x, game.player.y, 20.0, 20.0);
         context.stroke();
-
     }
-    fn paint_course(& self, context: &cairo::Context, game: &GameDisplayInfo) {
+    fn paint_course(&self, context: &cairo::Context, game: &GameDisplayInfo) {
         context.set_source_rgb(0.0, 0.0, 0.0);
         let last = game.course.points.last().unwrap().clone();
         context.move_to(last.x, last.y);
