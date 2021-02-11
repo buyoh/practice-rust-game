@@ -1,6 +1,6 @@
 mod basic;
-mod machine;
 mod course;
+mod machine;
 
 #[derive(Clone)]
 pub struct GameDisplayInfo {
@@ -39,8 +39,8 @@ pub struct Game {
 impl Game {
     pub fn new() -> Game {
         let mut player = machine::Machine::new();
-        player.entity.x = 200.0;
-        player.entity.y = 200.0;
+        player.entity.x = 0.0;
+        player.entity.y = 20.0;
         Game {
             // displayInfo: Rc::<RefCell<GameDisplayInfo>>::new(RefCell::<GameDisplayInfo>::new(
             //     GameDisplayInfo::new(),

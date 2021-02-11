@@ -13,7 +13,7 @@ impl Machine {
             entity: Entity {
                 x: 0.0,
                 y: 0.0,
-                angle: 0.0,
+                angle: std::f64::consts::PI / 2.0,
             },
             rigid_body: RigidBody::new(),
             accsel: 0.0,
