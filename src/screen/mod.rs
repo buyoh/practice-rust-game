@@ -2,6 +2,7 @@ extern crate cairo;
 extern crate gio;
 extern crate gtk;
 
+use core::time;
 use gio::prelude::*;
 use gtk::prelude::*;
 use std::cell::*;
@@ -69,15 +70,12 @@ pub fn new_app_drawingarea(width: i32, height: i32, renderer: Renderer) -> gtk::
     // animation thread
     // std::thread::spawn(glib::clone!(move || {
     std::thread::spawn(move || {
-        let mut n = 0;
         let mut rr = RendererHolder::new(renderer);
         for image in to_worker_rx.iter() {
-            n = (n + 1) % 100;
-
             // Draw an arc with a weirdly calculated radius
             image.borrow_mut().with_surface(|surface| {
                 let context = cairo::Context::new(surface);
-                rr.paint_game(&context, n);
+                rr.paint_game(&context);
                 surface.flush();
             });
 

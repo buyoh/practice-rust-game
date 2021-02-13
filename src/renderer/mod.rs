@@ -38,7 +38,7 @@ impl RendererHolder {
         }
     }
 
-    pub fn paint_game(&mut self, context: &cairo::Context, _cnt: i32) {
+    pub fn paint_game(&mut self, context: &cairo::Context) {
         // TODO: replace cnt to time
         // Take display data from queue
         for new_game_display in self.renderer.game_display_rx.try_iter() {

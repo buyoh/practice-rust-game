@@ -7,6 +7,7 @@ pub struct GameDisplayInfo {
     pub player: basic::Entity,
     pub camera: basic::Entity,
     pub course: course::Course,
+    pub frame_sec: f64,
 }
 
 impl GameDisplayInfo {
@@ -23,6 +24,7 @@ impl GameDisplayInfo {
                 angle: 0.0,
             },
             course: course::Course::default(),
+            frame_sec: 0.0,
         }
     }
 }
@@ -56,13 +58,14 @@ impl Game {
     pub fn get_display_info(&self) -> GameDisplayInfo {
         self.display_info.clone()
     }
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self, frame_sec: f64) {
         self.player.accsel =
             (if self.key_up { 1.0 } else { 0.0 }) + (if self.key_down { -1.0 } else { 0.0 });
         self.player.steer =
             (if self.key_right { 1.0 } else { 0.0 }) + (if self.key_left { -1.0 } else { 0.0 });
         self.player.tick();
         self.display_info.player = self.player.entity.clone();
+        self.display_info.frame_sec = frame_sec;
     }
     pub fn handle_key_press_event(&mut self, key: gdk::keys::Key) {
         // match key {

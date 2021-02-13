@@ -63,12 +63,11 @@ fn main() {
 
         // game main loop
         std::thread::spawn(move || {
-            let mut n = 0;
+            let tt = std::time::Instant::now();
             loop {
-                n = n + 1;
                 {
                     let mut g = game.lock().unwrap();
-                    g.tick();
+                    g.tick(tt.elapsed().as_secs_f64());
                     game_display_tx.send(g.get_display_info()).ok();
                 }
                 // タイマーが使えたら良い
