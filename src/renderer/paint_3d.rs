@@ -1,4 +1,4 @@
-use nalgebra::{Perspective3, Rotation3, Vector3};
+use nalgebra::{Perspective3, Point3, Rotation3, Vector3};
 
 use super::paint_2d;
 
@@ -15,27 +15,23 @@ impl Paint3D<'_> {
         Paint3D {
             d2: paint_2d::Paint2D::new(context, width, height),
             cam_pos: Vector3::<f64>::new(0.0, -5.0, 0.0),
-            cam_rot: Rotation3::from_euler_angles(-0.1, 0.0, 0.0),
-            pars: Perspective3::new(width / height, 3.14 / 4.0, 0.0, 10000.0),
+            cam_rot: Rotation3::from_euler_angles(0.0, 0.0, 0.0),
+            pars: Perspective3::new(width / height, 3.14 / 4.0, 0.01, 10000.0),
             pointer: (0.0, 0.0, 0.0),
         }
     }
 
-    fn is_renderable_vec(&self, vec: Vector3<f64>) -> bool {
-        let v = self.cam_rot * (vec + self.cam_pos);
-        v.z >= 0.0
-    }
-
-    fn is_renderable(&self, x: f64, y: f64, z: f64) -> bool {
-        self.is_renderable_vec(Vector3::<f64>::new(x, y, z))
-    }
-
     fn tr_vec(&self, vec: Vector3<f64>) -> Option<Vector3<f64>> {
-        let v = self.cam_rot * (vec + self.cam_pos);
-        if v.z < 0.0 {
+        let v = self.cam_rot.transform_vector(&(vec - self.cam_pos));
+        if v.z < self.pars.znear() || self.pars.zfar() < v.z {
             return None;
         }
-        Some(self.pars.project_vector(&v))
+        let v2 = self.pars.project_vector(&v);
+        if -1.0 <= v2.x && v2.x <= 1.0 && -1.0 <= v2.y && v2.y <= 1.0 {
+            Some(self.pars.project_vector(&v))
+        } else {
+            None
+        }
     }
 
     fn tr(&self, x: f64, y: f64, z: f64) -> Option<Vector3<f64>> {
@@ -52,7 +48,8 @@ impl Paint3D<'_> {
 
     pub fn set_camera_rotation_face_towards(&mut self, tx: f64, ty: f64, tz: f64) {
         self.cam_rot =
-            Rotation3::face_towards(&(Vector3::new(tx, ty, tz) - self.cam_pos), &Vector3::y());
+            Rotation3::face_towards(&(Vector3::new(tx, ty, tz) - self.cam_pos), &Vector3::y())
+                .inverse();
     }
 
     pub fn stroke(&self) {
@@ -75,10 +72,10 @@ impl Paint3D<'_> {
         let mut yo = yout;
         let mut zo = zout;
         for _ in 0..50 {
-            let mut xm = (xo + xi) / 2.0;
-            let mut ym = (yo + yi) / 2.0;
-            let mut zm = (zo + zi) / 2.0;
-            if self.is_renderable(x, y, z) {
+            let xm = (xo + xi) / 2.0;
+            let ym = (yo + yi) / 2.0;
+            let zm = (zo + zi) / 2.0;
+            if self.tr(xm, ym, zm).is_some() {
                 xi = xm;
                 yi = ym;
                 zi = zm;
@@ -96,15 +93,17 @@ impl Paint3D<'_> {
         let v2 = self.tr(x2, y2, z2);
         if let Some(u) = v {
             if let Some(u2) = v2 {
-                self.d2.linec(u.x, u.y, u2.x, u2.y);
+                self.d2.line(u.x, u.y, u2.x, u2.y);
             } else {
-                let u2 = self.clamp_outside_point(x, y, z, x2, y2, z2);
-                self.d2.linec(u.x, u.y, u2.0, u2.1);
+                let v2c = self.clamp_outside_point(x, y, z, x2, y2, z2);
+                let u2 = self.tr(v2c.0, v2c.1, v2c.2).unwrap();
+                self.d2.line(u.x, u.y, u2.x, u2.y);
             }
         } else {
             if let Some(u2) = v2 {
-                let u = self.clamp_outside_point(x2, y2, z2, x, y, z);
-                self.d2.linec(u.0, u.1, u2.x, u2.y);
+                let vc = self.clamp_outside_point(x2, y2, z2, x, y, z);
+                let u = self.tr(vc.0, vc.1, vc.2).unwrap();
+                self.d2.line(u.x, u.y, u2.x, u2.y);
             } else {
                 // nop
             }
@@ -112,9 +111,6 @@ impl Paint3D<'_> {
     }
 
     pub fn move_to(&mut self, x: f64, y: f64, z: f64) {
-        // let v = self.tr(x, y, z);
-        // 大きく枠を超えることがあるので、うまくクランプしておく
-        // move_to 辺りのステート操作は自前でやる
         self.pointer = (x, y, z);
     }
 

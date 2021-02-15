@@ -6,16 +6,24 @@ fn paint_game(context: &cairo::Context, renderer: &Renderer, game: &GameDisplayI
     context.set_source_rgb(0.0, 0.0, 0.0);
 
     let mut px = paint_3d::Paint3D::new(context, renderer.width as f64, renderer.height as f64);
-    let r = game.frame_sec / 2.0;
-    // let r = 0.0 as f64;
-    px.set_camera_position(r.cos() * 20.0, 40.0, r.sin() * 20.0);
+    // let r = game.frame_sec / 1.0;
+    px.set_camera_position(0.0, 40.0, 0.0);
     px.set_camera_rotation_face_towards(game.player.x, 0.1, game.player.y);
+
+    context.set_source_rgb(0.0, 0.0, 0.0);
+
     // px.set_camera_rotation_face_towards(0.0, 0.1, 200.0);
-    px.move_to(game.player.x - 10.0, 0.1, game.player.y);
-    px.line_to(game.player.x, 0.1, game.player.y - 10.0);
-    px.line_to(game.player.x + 10.0, 0.1, game.player.y);
-    px.line_to(game.player.x, 0.1, game.player.y + 10.0);
-    px.line_to(game.player.x - 10.0, 0.1, game.player.y);
+    {
+        let x = game.player.x;
+        let y = game.player.y;
+        let s = game.player.angle.sin();
+        let c = game.player.angle.cos();
+        px.move_to(x + 10.0 * c, 0.1, y + 10.0 * s);
+        px.line_to(x - 5.0 * s, 0.1, y + 5.0 * c);
+        px.line_to(x - 5.0 * c, 0.1, y - 5.0 * s);
+        px.line_to(x + 5.0 * s, 0.1, y - 5.0 * c);
+        px.line_to(x + 10.0 * c, 0.1, y + 10.0 * s);
+    }
 
     for z in -5..6 {
         for x in -5..6 {
@@ -25,7 +33,6 @@ fn paint_game(context: &cairo::Context, renderer: &Renderer, game: &GameDisplayI
         }
     }
     px.stroke();
-    println!();
 }
 
 fn paint_ui(context: &cairo::Context, renderer: &Renderer, game: &GameDisplayInfo) {
