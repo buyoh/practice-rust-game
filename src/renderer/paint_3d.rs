@@ -88,6 +88,40 @@ impl Paint3D<'_> {
         (xi, yi, zi)
     }
 
+    fn try_render_invisible_line(&self, x: f64, y: f64, z: f64, x2: f64, y2: f64, z2: f64) {
+        let mut v1 = self
+            .cam_rot
+            .transform_vector(&(Vector3::new(x, y, z) - self.cam_pos));
+        let mut v2 = self
+            .cam_rot
+            .transform_vector(&(Vector3::new(x2, y2, z2) - self.cam_pos));
+        if v1.x > v2.x {
+            // (v2, v1) = (v1, v2);
+            let vt = v2;
+            v2 = v1;
+            v1 = vt;
+        }
+        if v1.z < self.pars.znear() && v2.z < self.pars.znear() {
+            return; // never
+        }
+        if (v2.x - v1.x).abs() <= f64::EPSILON {
+            return; // avoid zero-division
+        }
+        let fx = (-v1.x) / (v2.x - v1.x);
+        if fx < 0.0 || 1.0 < fx {
+            return; // we consider only the line acrossing with x=0
+        }
+        let xm = x * fx + x2 * (1.0 - fx);
+        let ym = y * fx + y2 * (1.0 - fx);
+        let zm = z * fx + z2 * (1.0 - fx);
+        let vm = self.tr(xm, ym, zm);
+        if vm.is_some() {
+            // It doesn't loop infinity because vm is renderable
+            self.line(x, y, z, xm, ym, zm);
+            self.line(xm, ym, zm, x2, y2, z2);
+        }
+    }
+
     pub fn line(&self, x: f64, y: f64, z: f64, x2: f64, y2: f64, z2: f64) {
         let v = self.tr(x, y, z);
         let v2 = self.tr(x2, y2, z2);
@@ -105,7 +139,7 @@ impl Paint3D<'_> {
                 let u = self.tr(vc.0, vc.1, vc.2).unwrap();
                 self.d2.line(u.x, u.y, u2.x, u2.y);
             } else {
-                // nop
+                self.try_render_invisible_line(x, y, z, x2, y2, z2);
             }
         }
     }
