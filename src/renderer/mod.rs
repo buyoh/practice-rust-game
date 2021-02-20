@@ -5,7 +5,7 @@ use crate::game::GameDisplayInfo;
 use std::cell::*;
 use std::rc::*;
 
-mod game_renderer;
+mod game;
 mod paint_2d;
 mod paint_3d;
 
@@ -45,6 +45,6 @@ impl RendererHolder {
             self.game_display.replace(new_game_display);
         }
         let game = self.game_display.borrow();
-        game_renderer::paint_entry(context, &self.renderer, &game);
+        game::paint_entry(context, &self.renderer, &game);
     }
 }

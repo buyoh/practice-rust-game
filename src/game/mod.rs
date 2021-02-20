@@ -1,5 +1,5 @@
-mod basic;
-mod course;
+pub(crate) mod basic;
+pub(crate) mod course;
 mod machine;
 
 #[derive(Clone)]
