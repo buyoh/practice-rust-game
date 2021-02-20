@@ -89,17 +89,16 @@ impl Paint3D<'_> {
     }
 
     fn try_render_invisible_line(&self, x: f64, y: f64, z: f64, x2: f64, y2: f64, z2: f64) {
-        let mut v1 = self
+        let v1 = self
             .cam_rot
             .transform_vector(&(Vector3::new(x, y, z) - self.cam_pos));
-        let mut v2 = self
+        let v2 = self
             .cam_rot
             .transform_vector(&(Vector3::new(x2, y2, z2) - self.cam_pos));
         if v1.x > v2.x {
-            // (v2, v1) = (v1, v2);
-            let vt = v2;
-            v2 = v1;
-            v1 = vt;
+            // swap の計算量だけで済むはずだが、冗長になりそうなので
+            self.try_render_invisible_line(x2, y2, z2, x, y, z);
+            return;
         }
         if v1.z < self.pars.znear() && v2.z < self.pars.znear() {
             return; // never
@@ -107,7 +106,7 @@ impl Paint3D<'_> {
         if (v2.x - v1.x).abs() <= f64::EPSILON {
             return; // avoid zero-division
         }
-        let fx = (-v1.x) / (v2.x - v1.x);
+        let fx = v2.x / (v2.x - v1.x);
         if fx < 0.0 || 1.0 < fx {
             return; // we consider only the line acrossing with x=0
         }

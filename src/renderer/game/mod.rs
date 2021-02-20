@@ -8,7 +8,7 @@ fn paint_game(context: &cairo::Context, renderer: &Renderer, game: &GameDisplayI
 
     let mut px = paint_3d::Paint3D::new(context, renderer.width as f64, renderer.height as f64);
     // let r = game.frame_sec / 1.0;
-    px.set_camera_position(0.0, 40.0, 0.0);
+    px.set_camera_position(game.camera.x, 20.0, game.camera.y);
     px.set_camera_rotation_face_towards(game.player.x, 0.1, game.player.y);
 
     context.set_source_rgb(0.0, 0.0, 0.0);

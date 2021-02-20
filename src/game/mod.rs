@@ -19,7 +19,7 @@ impl GameDisplayInfo {
                 angle: 0.0,
             },
             camera: basic::Entity {
-                x: 0.0,
+                x: 1.0,
                 y: 0.0,
                 angle: 0.0,
             },
@@ -65,6 +65,12 @@ impl Game {
             (if self.key_right { 1.0 } else { 0.0 }) + (if self.key_left { -1.0 } else { 0.0 });
         self.player.tick();
         self.display_info.player = self.player.entity.clone();
+        self.display_info.camera.x =
+            (self.display_info.player.x - 50.0 * self.display_info.player.angle.cos()) * 0.1
+                + (self.display_info.camera.x) * 0.9;
+        self.display_info.camera.y =
+            (self.display_info.player.y - 50.0 * self.display_info.player.angle.sin()) * 0.1
+                + (self.display_info.camera.y) * 0.9;
         self.display_info.frame_sec = frame_sec;
     }
     pub fn handle_key_press_event(&mut self, key: gdk::keys::Key) {
