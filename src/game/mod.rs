@@ -1,6 +1,9 @@
 pub(crate) mod basic;
 pub(crate) mod course;
+mod input;
 mod machine;
+
+use input::Key;
 
 #[derive(Clone)]
 pub struct GameDisplayInfo {
@@ -30,12 +33,11 @@ impl GameDisplayInfo {
 }
 
 pub struct Game {
+    // TODO: Game が別スレッドから参照されるのはdisplay_infoとinputだけである
+    // フィールドに排他制御を付けるべき（排他制御を最小にするべき）
     display_info: GameDisplayInfo,
     player: machine::Machine,
-    key_up: bool,
-    key_down: bool,
-    key_left: bool,
-    key_right: bool,
+    input: input::Input,
 }
 
 impl Game {
@@ -44,25 +46,34 @@ impl Game {
         player.entity.x = 0.0;
         player.entity.y = 20.0;
         Game {
-            // displayInfo: Rc::<RefCell<GameDisplayInfo>>::new(RefCell::<GameDisplayInfo>::new(
-            //     GameDisplayInfo::new(),
-            // )),
             display_info: GameDisplayInfo::default(),
             player: player,
-            key_up: false,
-            key_down: false,
-            key_left: false,
-            key_right: false,
+            input: input::Input::new(),
         }
     }
     pub fn get_display_info(&self) -> GameDisplayInfo {
         self.display_info.clone()
     }
     pub fn tick(&mut self, frame_sec: f64) {
-        self.player.accsel =
-            (if self.key_up { 1.0 } else { 0.0 }) + (if self.key_down { -1.0 } else { 0.0 });
-        self.player.steer =
-            (if self.key_right { 1.0 } else { 0.0 }) + (if self.key_left { -1.0 } else { 0.0 });
+        // TODO: Fieldを使って管理する
+        self.player.accsel = (if self.input.is_pressed(Key::Up) {
+            1.0
+        } else {
+            0.0
+        }) + (if self.input.is_pressed(Key::Down) {
+            -1.0
+        } else {
+            0.0
+        });
+        self.player.steer = (if self.input.is_pressed(Key::Right) {
+            1.0
+        } else {
+            0.0
+        }) + (if self.input.is_pressed(Key::Left) {
+            -1.0
+        } else {
+            0.0
+        });
         self.player.tick();
         self.display_info.player = self.player.entity.clone();
         self.display_info.camera.x =
@@ -72,6 +83,7 @@ impl Game {
             (self.display_info.player.y - 50.0 * self.display_info.player.angle.sin()) * 0.1
                 + (self.display_info.camera.y) * 0.9;
         self.display_info.frame_sec = frame_sec;
+        self.input.tick();
     }
     pub fn handle_key_press_event(&mut self, key: gdk::keys::Key) {
         // match key {
@@ -83,10 +95,10 @@ impl Game {
         // };
         // TODO: 妥協策
         match key.name().unwrap().as_str() {
-            "Left" => self.key_left = true,
-            "Up" => self.key_up = true,
-            "Right" => self.key_right = true,
-            "Down" => self.key_down = true,
+            "Left" => self.input.press(Key::Left),
+            "Up" => self.input.press(Key::Up),
+            "Right" => self.input.press(Key::Right),
+            "Down" => self.input.press(Key::Down),
             _ => (),
         };
     }
@@ -99,10 +111,10 @@ impl Game {
         //     _ => (),
         // };
         match key.name().unwrap().as_str() {
-            "Left" => self.key_left = false,
-            "Up" => self.key_up = false,
-            "Right" => self.key_right = false,
-            "Down" => self.key_down = false,
+            "Left" => self.input.release(Key::Left),
+            "Up" => self.input.release(Key::Up),
+            "Right" => self.input.release(Key::Right),
+            "Down" => self.input.release(Key::Down),
             _ => (),
         };
     }

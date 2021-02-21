@@ -7,6 +7,7 @@ pub(crate) struct Machine {
     pub steer: f64,
 }
 
+// TODO: inherit FieldObject
 impl Machine {
     pub fn new() -> Machine {
         Machine {

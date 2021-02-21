@@ -13,9 +13,6 @@ use crate::renderer::{Renderer, RendererHolder}; // note: いまいち？
 mod image;
 
 pub fn new_app_drawingarea(width: i32, height: i32, renderer: Renderer) -> gtk::DrawingArea {
-    // pub fn new_app_drawingarea<'a, F: FnOnce() -> game::GameDisplayInfo + Send + 'static>(
-    //     game_getter: F,
-    // ) -> gtk::DrawingArea {
     let builder = gtk::DrawingAreaBuilder::new().width_request(300);
     let drawing_area = builder.build();
 
@@ -26,24 +23,24 @@ pub fn new_app_drawingarea(width: i32, height: i32, renderer: Renderer) -> gtk::
     drawing_area
         .add_events(gdk::EventMask::BUTTON_PRESS_MASK | gdk::EventMask::BUTTON_RELEASE_MASK);
 
-    drawing_area.connect_button_press_event(|_, event| {
+    drawing_area.connect_button_press_event(|_, _event| {
         // TODO: handle mouse event
-        println!(
-            "btnpress: {} ({}, {})",
-            event.get_button(),
-            event.get_position().0,
-            event.get_position().1
-        );
+        // println!(
+        //     "btnpress: {} ({}, {})",
+        //     event.get_button(),
+        //     event.get_position().0,
+        //     event.get_position().1
+        // );
         Inhibit(false)
     });
-    drawing_area.connect_button_release_event(|_, event| {
+    drawing_area.connect_button_release_event(|_, _event| {
         // TODO: handle mouse event
-        println!(
-            "btnrelease: {} ({}, {})",
-            event.get_button(),
-            event.get_position().0,
-            event.get_position().1
-        );
+        // println!(
+        //     "btnrelease: {} ({}, {})",
+        //     event.get_button(),
+        //     event.get_position().0,
+        //     event.get_position().1
+        // );
         Inhibit(false)
     });
 
@@ -68,11 +65,10 @@ pub fn new_app_drawingarea(width: i32, height: i32, renderer: Renderer) -> gtk::
     let (to_worker_tx, to_worker_rx) = std::sync::mpsc::channel::<RefCell<image::Image>>();
 
     // animation thread
-    // std::thread::spawn(glib::clone!(move || {
     std::thread::spawn(move || {
+        // Hold renderer here
         let mut rr = RendererHolder::new(renderer);
         for image in to_worker_rx.iter() {
-            // Draw an arc with a weirdly calculated radius
             image.borrow_mut().with_surface(|surface| {
                 let context = cairo::Context::new(surface);
                 rr.paint_game(&context);
@@ -110,6 +106,7 @@ pub fn new_app_drawingarea(width: i32, height: i32, renderer: Renderer) -> gtk::
             buffer_image.swap(&next_image);
             let _ = to_worker_tx.send(next_image);
 
+            // Query redrawing
             let img = buffer_image.borrow();
             drawing_area.queue_draw_area(0, 0, img.width(), img.height());
 

@@ -1,3 +1,5 @@
+// based on https://github.com/gtk-rs/examples/blob/master/src/bin/cairo_threads.rs
+
 use std::cell::*;
 use std::rc::*;
 

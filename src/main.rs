@@ -42,7 +42,6 @@ fn main() {
                 Ok(mut g) => g.handle_key_press_event(event.get_keyval()),
                 Err(_) => (),
             }
-            // println!("press: {}", event.get_keycode().take().unwrap());
             Inhibit(false)
         });
         window.connect_key_release_event(move |_, event| {
@@ -50,7 +49,6 @@ fn main() {
                 Ok(mut g) => g.handle_key_release_event(event.get_keyval()),
                 Err(_) => (),
             }
-            // println!("release: {}", event.get_keycode().take().unwrap());
             Inhibit(false)
         });
 
