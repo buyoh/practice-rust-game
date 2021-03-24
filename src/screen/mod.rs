@@ -59,17 +59,17 @@ pub fn new_app_drawingarea(width: i32, height: i32, renderer: Renderer) -> gtk::
     // gtkのメインスレッドで実行したい場合に使えるchannel
     // 受け取った時に実行するには、worker_to_gui_rx.attachを実装する
     let (worker_to_gui_tx, worker_to_gui_rx) =
-        glib::MainContext::channel::<RefCell<image::Image>>(glib::PRIORITY_DEFAULT);
+        glib::MainContext::channel::<Box<image::Image>>(glib::PRIORITY_DEFAULT);
 
     // from main thread to worker thread
-    let (to_worker_tx, to_worker_rx) = std::sync::mpsc::channel::<RefCell<image::Image>>();
+    let (to_worker_tx, to_worker_rx) = std::sync::mpsc::channel::<Box<image::Image>>();
 
     // animation thread
     std::thread::spawn(move || {
         // Hold renderer here
         let mut rr = RendererHolder::new(renderer);
-        for image in to_worker_rx.iter() {
-            image.borrow_mut().with_surface(|surface| {
+        for mut image in to_worker_rx.iter() {
+            image.with_surface(|surface| {
                 let context = cairo::Context::new(surface);
                 rr.paint_game(&context);
                 surface.flush();
@@ -81,14 +81,15 @@ pub fn new_app_drawingarea(width: i32, height: i32, renderer: Renderer) -> gtk::
         }
     });
 
-    let buffer_image = Rc::new(RefCell::new(initial_image.clone()));
-    let _ = to_worker_tx.send(RefCell::new(initial_image));
+    let buffer_image = Rc::new(RefCell::new(Box::new(initial_image.clone()))); // これは頭悪い？
+    let _ = to_worker_tx.send(Box::new(initial_image));
 
     drawing_area.connect_draw(
       glib::clone!(@weak buffer_image => @default-return Inhibit(false), move|_ /* widget */, context: &cairo::Context| {
             // 描画が必要になった時に呼び出される
             // buffer_image が死んだ時は呼び出されず Inhibit(false) を返す
-            buffer_image.borrow_mut().with_surface(|surface| {
+            let mut img = buffer_image.borrow_mut();
+            img.with_surface(|surface| {
                 context.set_source_surface(surface, 0.0, 0.0);
                 context.paint();
                 context.set_source_rgb(0.0, 0.0, 0.0);
@@ -102,13 +103,13 @@ pub fn new_app_drawingarea(width: i32, height: i32, renderer: Renderer) -> gtk::
         glib::clone!(@weak drawing_area => @default-return Continue(false), move |image| {
             // Swap the newly received image with the old stored one and send the old one back to
             // the worker thread
-            let next_image = image;
-            buffer_image.swap(&next_image);
-            let _ = to_worker_tx.send(next_image);
+            let width = image.width();
+            let height = image.height();
+            let img = buffer_image.replace(image);
+            let _ = to_worker_tx.send(img);
 
             // Query redrawing
-            let img = buffer_image.borrow();
-            drawing_area.queue_draw_area(0, 0, img.width(), img.height());
+            drawing_area.queue_draw_area(0, 0, width, height);
 
             Continue(true)
         }),
