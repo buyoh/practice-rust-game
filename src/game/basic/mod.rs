@@ -1,5 +1,3 @@
-use std::ops::DerefMut;
-
 #[derive(Clone)]
 pub struct Entity {
     pub x: f64,

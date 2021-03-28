@@ -2,7 +2,6 @@ extern crate cairo;
 extern crate gio;
 extern crate gtk;
 
-use core::time;
 use gio::prelude::*;
 use gtk::prelude::*;
 use std::cell::*;

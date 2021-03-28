@@ -3,8 +3,11 @@ extern crate gio;
 extern crate gtk;
 
 mod game;
+mod input;
 mod renderer;
 mod screen;
+
+use std::{cell::RefCell, rc::Rc};
 
 use gio::prelude::*;
 use gtk::prelude::*;
@@ -26,31 +29,29 @@ fn main() {
         window.set_default_size(DISPLAY_WIDTH, DISPLAY_HEIGHT);
         window.set_resizable(false);
 
-        let game = std::sync::Arc::new(std::sync::Mutex::new(game::Game::new()));
+        let (input, driver_raw) = input::Input::create_with_driver();
+        let game = std::sync::Arc::new(std::sync::Mutex::new(game::Game::new(input)));
+        let input_driver = Rc::new(RefCell::new(driver_raw));
 
         // for transfering display infomations
-        let (game_display_tx, game_display_rx) =
-            std::sync::mpsc::channel::<game::GameDisplayInfo>();
-
-        // これじゃない感
-        let game1 = game.clone();
-        let game2 = game.clone();
+        let (game_display_tx, game_display_rx) = std::sync::mpsc::channel::<game::GameRenderInfo>();
 
         window.add_events(gdk::EventMask::KEY_PRESS_MASK | gdk::EventMask::KEY_RELEASE_MASK);
-        window.connect_key_press_event(move |_, event| {
-            match game1.lock() {
-                Ok(mut g) => g.handle_key_press_event(event.get_keyval()),
-                Err(_) => (),
-            }
-            Inhibit(false)
-        });
-        window.connect_key_release_event(move |_, event| {
-            match game2.lock() {
-                Ok(mut g) => g.handle_key_release_event(event.get_keyval()),
-                Err(_) => (),
-            }
-            Inhibit(false)
-        });
+        {
+            let idr = input_driver.clone();
+            window.connect_key_press_event(move |_, event| {
+                idr.borrow_mut().handle_key_press_event(event.get_keyval());
+                Inhibit(false)
+            });
+        }
+        {
+            let idr = input_driver.clone();
+            window.connect_key_release_event(move |_, event| {
+                idr.borrow_mut()
+                    .handle_key_release_event(event.get_keyval());
+                Inhibit(false)
+            });
+        }
 
         let renderer = renderer::Renderer::new(DISPLAY_WIDTH, DISPLAY_HEIGHT, game_display_rx);
 
@@ -66,7 +67,7 @@ fn main() {
                 {
                     let mut g = game.lock().unwrap();
                     g.tick(tt.elapsed().as_secs_f64());
-                    game_display_tx.send(g.get_display_info()).ok();
+                    game_display_tx.send(g.get_render_info()).ok();
                 }
                 // タイマーが使えたら良い
                 std::thread::sleep(std::time::Duration::from_millis(15));
