@@ -1,9 +1,9 @@
-use crate::game::GameDisplayInfo;
+use crate::game::GameRenderInfo;
 
 use super::{paint_2d, paint_3d, Renderer};
 mod component3d;
 
-fn paint_game(context: &cairo::Context, renderer: &Renderer, game: &GameDisplayInfo) {
+fn paint_game(context: &cairo::Context, renderer: &Renderer, game: &GameRenderInfo) {
     context.set_source_rgb(0.0, 0.0, 0.0);
 
     let mut px = paint_3d::Paint3D::new(context, renderer.width as f64, renderer.height as f64);
@@ -25,7 +25,7 @@ fn paint_game(context: &cairo::Context, renderer: &Renderer, game: &GameDisplayI
     px.stroke();
 }
 
-fn paint_ui(context: &cairo::Context, renderer: &Renderer, game: &GameDisplayInfo) {
+fn paint_ui(context: &cairo::Context, renderer: &Renderer, game: &GameRenderInfo) {
     // TODO
     // let px = paint_2d::Paint2D::new_as_ui(context, renderer.width as f64, renderer.height as f64);
     // // car position
@@ -41,7 +41,7 @@ fn paint_ui(context: &cairo::Context, renderer: &Renderer, game: &GameDisplayInf
     // px.stroke();
 }
 
-pub fn paint_entry(context: &cairo::Context, renderer: &Renderer, game: &GameDisplayInfo) {
+pub fn paint_entry(context: &cairo::Context, renderer: &Renderer, game: &GameRenderInfo) {
     context.set_source_rgb(0.9, 0.9, 0.9);
     context.paint();
     paint_game(context, renderer, game);

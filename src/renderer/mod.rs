@@ -1,6 +1,6 @@
 use std::sync::mpsc::Receiver;
 
-use crate::game::GameDisplayInfo;
+use crate::game::GameRenderInfo;
 
 use std::cell::*;
 use std::rc::*;
@@ -12,16 +12,16 @@ mod paint_3d;
 pub struct Renderer {
     width: i32,
     height: i32,
-    game_display_rx: Receiver<GameDisplayInfo>,
+    game_display_rx: Receiver<GameRenderInfo>,
 }
 
 pub(crate) struct RendererHolder {
     renderer: Renderer,
-    game_display: Rc<RefCell<GameDisplayInfo>>,
+    game_display: Rc<RefCell<GameRenderInfo>>,
 }
 
 impl Renderer {
-    pub fn new(width: i32, height: i32, game_display_rx: Receiver<GameDisplayInfo>) -> Renderer {
+    pub fn new(width: i32, height: i32, game_display_rx: Receiver<GameRenderInfo>) -> Renderer {
         Renderer {
             width: width,
             height: height,
@@ -34,7 +34,7 @@ impl RendererHolder {
     pub fn new(renderer: Renderer) -> RendererHolder {
         RendererHolder {
             renderer: renderer,
-            game_display: Rc::new(RefCell::new(GameDisplayInfo::default())),
+            game_display: Rc::new(RefCell::new(GameRenderInfo::default())),
         }
     }
 
